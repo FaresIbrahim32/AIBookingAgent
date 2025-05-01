@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Event Planner - iCalendar</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0f0f1a;
+            color: #e0e0ff;
+            overflow-x: hidden;
+        }
+        
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        nav {
+            background-color: rgba(20, 20, 40, 0.8);
+            padding: 15px 0;
+            box-shadow: 0 2px 20px rgba(110, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            gap: 40px;
+        }
+        
+        nav a {
+            color: #8e9dff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+            position: relative;
+            padding: 8px 0;
+        }
+        
+        nav a:hover {
+            color: #61dafb;
+            text-shadow: 0 0 8px rgba(97, 218, 251, 0.6);
+        }
+        
+        nav a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: #61dafb;
+            transition: width 0.3s;
+        }
+        
+        nav a:hover::after {
+            width: 100%;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 40px;
+            background-color: rgba(30, 30, 60, 0.8);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+                        0 0 20px rgba(97, 218, 251, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(97, 218, 251, 0.1);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .container:hover {
+            transform: translateY(-5px) rotateX(1deg) rotateY(1deg);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
+                        0 0 30px rgba(97, 218, 251, 0.3);
+        }
+        
+        h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
+            position: relative;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #61dafb, #8e9dff);
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 3px;
+        }
+        
+        .events-list {
+            margin-top: 30px;
+        }
+        
+        .event-item {
+            padding: 20px;
+            border: 1px solid rgba(97, 218, 251, 0.2);
+            background-color: rgba(20, 20, 40, 0.6);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .event-item:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: rgba(97, 218, 251, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2), 
+                        0 0 15px rgba(97, 218, 251, 0.2);
+        }
+        
+        .event-info {
+            flex-grow: 1;
+        }
+        
+        .event-name {
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(97, 218, 251, 0.3);
+        }
+        
+        .event-details {
+            color: rgba(224, 224, 255, 0.8);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .delete-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-left: 20px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .delete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .delete-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .delete-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s;
+        }
+        
+        .delete-btn:hover::before {
+            left: 100%;
+        }
+        
+        .add-event-btn {
+            display: block;
+            background: linear-gradient(45deg, #61dafb, #8e9dff);
+            color: #fff;
+            text-decoration: none;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 30px;
+            transition: all 0.3s;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(97, 218, 251, 0.3);
+        }
+        
+        .add-event-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(97, 218, 251, 0.4);
+        }
+        
+        .add-event-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .add-event-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s;
+        }
+        
+        .add-event-btn:hover::before {
+            left: 100%;
+        }
+        
+        .no-events {
+            text-align: center;
+            color: rgba(224, 224, 255, 0.7);
+            margin: 40px 0;
+            font-size: 18px;
+            position: relative;
+        }
+        
+        /* Welcome section enhancements */
+        .welcome-section {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .welcome-title {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #61dafb, #8e9dff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .welcome-subtitle {
+            font-size: 18px;
+            color: rgba(224, 224, 255, 0.8);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .welcome-features {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .feature-item {
+            background-color: rgba(20, 20, 40, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(97, 218, 251, 0.2);
+            width: 200px;
+            transition: all 0.3s;
+        }
+        
+        .feature-item:hover {
+            transform: translateY(-5px);
+            border-color: rgba(97, 218, 251, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2), 
+                        0 0 15px rgba(97, 218, 251, 0.2);
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #61dafb;
+        }
+        
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .feature-desc {
+            font-size: 14px;
+            color: rgba(224, 224, 255, 0.7);
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        /* Glowing effect */
+        @keyframes glow {
+            0% {
+                box-shadow: 0 0 5px rgba(97, 218, 251, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(97, 218, 251, 0.5);
+            }
+            100% {
+                box-shadow: 0 0 5px rgba(97, 218, 251, 0.3);
+            }
+        }
+        
+        .glowing {
+            animation: glow 3s infinite;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg"></canvas>
+    
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="/logout">Logout</a></li>
+            {% else %}
+                <li><a href="/login">Login</a></li>
+                <li><a href="/register">Register</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    
+    <div class="container glowing">
+        <h1>Your Event Universe</h1>
+        
+        {% if current_user.is_authenticated %}
+            <div class="events-list">
+                {% if events %}
+                    {% for event in events %}
+                        <div class="event-item animate-in" style="animation-delay: {{ loop.index * 0.1 }}s;">
+                            <div class="event-info">
+                                <div class="event-name">{{ event.event_name }}</div>
+                                <div class="event-details">
+                                    Type: {{ event.event_type }} | 
+                                    Guests: {{ event.event_size }} | 
+                                    Venue: {{ event.venue }} | 
+                                    Date: {{ event.planned_for.strftime('%Y-%m-%d') }}
+                                </div>
+                            </div>
+                            <form action="{{ url_for('delete_event', event_id=event.event_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this event?');">
+                                <button type="submit" class="delete-btn">Delete</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-events">You don't have any events yet.</p>
+                {% endif %}
+            </div>
+            
+            <a href="/event" class="add-event-btn">+ Create New Event</a>
+        {% else %}
+            <div class="welcome-section">
+                <div class="welcome-title animate-in">Welcome to iCalendar</div>
+                <div class="welcome-subtitle animate-in" style="animation-delay: 0.2s;">Your AI-powered event planning assistant</div>
+                
+                <div class="welcome-features">
+                    <div class="feature-item animate-in" style="animation-delay: 0.3s;">
+                        <div class="feature-icon">✨</div>
+                        <div class="feature-title">Smart Planning</div>
+                        <div class="feature-desc">AI-optimized scheduling and venue recommendations</div>
+                    </div>
+                    <div class="feature-item animate-in" style="animation-delay: 0.4s;">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-title">Guest Management</div>
+                        <div class="feature-desc">Track RSVPs and manage attendee information</div>
+                    </div>
+                    <div class="feature-item animate-in" style="animation-delay: 0.5s;">
+                        <div class="feature-icon">🔔</div>
+                        <div class="feature-title">Reminders</div>
+                        <div class="feature-desc">Never miss important event deadlines</div>
+                    </div>
+                </div>
+                
+                <a href="/login" class="add-event-btn animate-in" style="animation-delay: 0.6s;">Start Planning!</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.querySelector('#bg'),
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.setZ(30);
+        
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        // Add directional light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        
+        // Add point lights
+        const pointLight1 = new THREE.PointLight(0x61dafb, 1, 100);
+        pointLight1.position.set(5, 5, 5);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0x8e9dff, 1, 100);
+        pointLight2.position.set(-5, -5, 5);
+        scene.add(pointLight2);
+        
+        // Create stars
+        function addStar() {
+            const geometry = new THREE.SphereGeometry(0.1, 24, 24);
+            const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const star = new THREE.Mesh(geometry, material);
+            
+            const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+            star.position.set(x, y, z);
+            scene.add(star);
+            return star;
+        }
+        
+        const stars = Array(200).fill().map(addStar);
+        
+        // Create floating particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 1000;
+        
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 100;
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.03,
+            color: 0x61dafb,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+        
+        // Add calendar-themed objects
+        function addCalendarPage() {
+            const geometry = new THREE.BoxGeometry(5, 5, 0.1);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.3,
+                metalness: 0.3,
+                roughness: 0.5
+            });
+            const page = new THREE.Mesh(geometry, material);
+            
+            const [x, y, z] = [
+                THREE.MathUtils.randFloatSpread(100),
+                THREE.MathUtils.randFloatSpread(100),
+                THREE.MathUtils.randFloatSpread(100)
+            ];
+            
+            page.position.set(x, y, z);
+            page.rotation.x = Math.random() * Math.PI;
+            page.rotation.y = Math.random() * Math.PI;
+            
+            scene.add(page);
+            return page;
+        }
+        
+        const calendarPages = Array(15).fill().map(addCalendarPage);
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate stars slightly
+            stars.forEach(star => {
+                star.rotation.x += 0.001;
+                star.rotation.y += 0.001;
+            });
+            
+            // Rotate particles
+            particlesMesh.rotation.x += 0.0002;
+            particlesMesh.rotation.y += 0.0002;
+            
+            // Rotate calendar pages
+            calendarPages.forEach(page => {
+                page.rotation.x += 0.001;
+                page.rotation.y += 0.001;
+                page.rotation.z += 0.0005;
+            });
+            
+            // Move camera slightly for subtle effect
+            camera.position.x = Math.sin(Date.now() * 0.0002) * 0.5;
+            camera.position.y = Math.cos(Date.now() * 0.0002) * 0.5;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start animation
+        animate();
+        
+        // Add parallax effect to container
+        const container = document.querySelector('.container');
+        
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 35;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 35;
+            container.style.transform = `translateY(-5px) rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+        
+        // Reset transform when mouse leaves
+        document.addEventListener('mouseleave', () => {
+            container.style.transform = 'translateY(-5px) rotateY(0deg) rotateX(0deg)';
+        });
+    </script>
+</body>
+</html>
