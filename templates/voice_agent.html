@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Agent - iCalendar</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0f0f1a;
+            color: #e0e0ff;
+            overflow-x: hidden;
+        }
+        
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        nav {
+            background-color: rgba(20, 20, 40, 0.8);
+            padding: 15px 0;
+            box-shadow: 0 2px 20px rgba(110, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            gap: 40px;
+        }
+        
+        nav a {
+            color: #8e9dff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+            position: relative;
+            padding: 8px 0;
+        }
+        
+        nav a:hover {
+            color: #61dafb;
+            text-shadow: 0 0 8px rgba(97, 218, 251, 0.6);
+        }
+        
+        nav a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: #61dafb;
+            transition: width 0.3s;
+        }
+        
+        nav a:hover::after {
+            width: 100%;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 80px auto;
+            padding: 40px;
+            background-color: rgba(30, 30, 60, 0.8);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+                        0 0 20px rgba(97, 218, 251, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(97, 218, 251, 0.1);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .container:hover {
+            transform: translateY(-5px) rotateX(1deg) rotateY(1deg);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
+                        0 0 30px rgba(97, 218, 251, 0.3);
+        }
+        
+        h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
+            position: relative;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #61dafb, #8e9dff);
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 3px;
+        }
+        
+        #startBtn {
+            display: block;
+            margin: 30px auto;
+            padding: 20px 50px;
+            background: linear-gradient(45deg, #61dafb, #8e9dff);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(97, 218, 251, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(97, 218, 251, 0.4);
+        }
+        
+        #startBtn.recording {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        #startBtn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s;
+        }
+        
+        #startBtn:hover::before {
+            left: 100%;
+        }
+        
+        #status, #transcript {
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            background-color: rgba(20, 20, 40, 0.6);
+            border: 1px solid rgba(97, 218, 251, 0.2);
+        }
+        
+        #status {
+            font-weight: bold;
+            color: #8e9dff;
+            font-size: 18px;
+        }
+        
+        #transcript {
+            min-height: 50px;
+            color: #e0e0ff;
+            line-height: 1.6;
+        }
+        
+        #responseAudio {
+            display: block;
+            margin: 20px auto;
+            width: 80%;
+            border: 1px solid rgba(97, 218, 251, 0.2);
+            border-radius: 8px;
+            background-color: rgba(20, 20, 40, 0.6);
+        }
+        
+        .instructions {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid #61dafb;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #61dafb;
+            font-size: 20px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            color: #e0e0ff;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+            padding-left: 10px;
+            position: relative;
+        }
+        
+        .instructions li::before {
+            content: '🎤';
+            position: absolute;
+            left: -20px;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        /* Glowing effect */
+        @keyframes glow {
+            0% {
+                box-shadow: 0 0 5px rgba(97, 218, 251, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(97, 218, 251, 0.5);
+            }
+            100% {
+                box-shadow: 0 0 5px rgba(97, 218, 251, 0.3);
+            }
+        }
+        
+        .glowing {
+            animation: glow 3s infinite;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg"></canvas>
+    
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/event">Create Event</a></li>
+            <li><a href="/voice-agent">Voice Agent</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container glowing animate-in">
+        <h1>Voice Booking Agent</h1>
+        <button id="startBtn">Start Speaking</button>
+        <div id="status">Press the button and speak</div>
+        <div id="transcript"></div>
+        <audio id="responseAudio" controls style="display:none;"></audio>
+        
+        <div class="instructions">
+            <h3>You can ask me:</h3>
+            <ul>
+                <li>"What events do I have booked?"</li>
+                <li>"Create event called [name] on [date] at [venue]"</li>
+                <li>"Event name is [name] on [date]"</li>
+                <li>"Help"</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.querySelector('#bg'),
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.setZ(30);
+        
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        // Add directional light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        
+        // Add point lights
+        const pointLight1 = new THREE.PointLight(0x61dafb, 1, 100);
+        pointLight1.position.set(5, 5, 5);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0x8e9dff, 1, 100);
+        pointLight2.position.set(-5, -5, 5);
+        scene.add(pointLight2);
+        
+        // Create stars
+        function addStar() {
+            const geometry = new THREE.SphereGeometry(0.1, 24, 24);
+            const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const star = new THREE.Mesh(geometry, material);
+            
+            const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(100));
+            star.position.set(x, y, z);
+            scene.add(star);
+            return star;
+        }
+        
+        const stars = Array(200).fill().map(addStar);
+        
+        // Create floating particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 1000;
+        
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 100;
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.03,
+            color: 0x61dafb,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate stars slightly
+            stars.forEach(star => {
+                star.rotation.x += 0.001;
+                star.rotation.y += 0.001;
+            });
+            
+            // Rotate particles
+            particlesMesh.rotation.x += 0.0002;
+            particlesMesh.rotation.y += 0.0002;
+            
+            // Move camera slightly for subtle effect
+            camera.position.x = Math.sin(Date.now() * 0.0002) * 0.5;
+            camera.position.y = Math.cos(Date.now() * 0.0002) * 0.5;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start animation
+        animate();
+        
+        // Add parallax effect to container
+        const container = document.querySelector('.container');
+        
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 35;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 35;
+            container.style.transform = `translateY(-5px) rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+        
+        // Reset transform when mouse leaves
+        document.addEventListener('mouseleave', () => {
+            container.style.transform = 'translateY(-5px) rotateY(0deg) rotateX(0deg)';
+        });
+        
+        // Voice agent functionality
+        const startBtn = document.getElementById('startBtn');
+        const statusDiv = document.getElementById('status');
+        const transcriptDiv = document.getElementById('transcript');
+        const responseAudio = document.getElementById('responseAudio');
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        
+        startBtn.addEventListener('click', async () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                startBtn.textContent = 'Start Speaking';
+                startBtn.classList.remove('recording');
+                return;
+            }
+            
+            try {
+                console.log("Requesting microphone access...");
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log("Microphone access granted");
+                
+                // Define the recorder options here to fix the "options is not defined" error
+                const recorderOptions = { mimeType: 'audio/webm' };
+                
+                try {
+                    mediaRecorder = new MediaRecorder(stream, recorderOptions);
+                } catch (e) {
+                    console.log("MediaRecorder error with audio/webm, falling back to default:", e);
+                    mediaRecorder = new MediaRecorder(stream);
+                }
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    console.log("Audio data available, size:", e.data.size);
+                    audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    statusDiv.textContent = 'Processing...';
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    
+                    console.log("Audio blob created, size:", audioBlob.size);
+                    
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+                    
+                    try {
+                        console.log("Sending audio data to server...");
+                        const response = await axios.post('/process-voice-command', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        
+                        console.log("Server response:", response.data);
+                        
+                        // Display the transcript and response
+                        if (response.data.transcript) {
+                            transcriptDiv.innerHTML = `<strong>You said:</strong> ${response.data.transcript}<br><br>
+                                                      <strong>Response:</strong> ${response.data.text_response}`;
+                        } else {
+                            transcriptDiv.innerHTML = `<strong>Response:</strong> ${response.data.text_response}`;
+                        }
+                        
+                        // Show and play the audio response if available
+                        if (response.data.audio_response) {
+                            responseAudio.style.display = 'block';
+                            
+                            // Convert the audio response from base64 to binary
+                            const binaryString = atob(response.data.audio_response);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            const audioBlob = new Blob([bytes.buffer], { type: 'audio/mpeg' });
+                            
+                            responseAudio.src = URL.createObjectURL(audioBlob);
+                            responseAudio.play();
+                        }
+                        
+                        statusDiv.textContent = 'Ready for next command';
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        statusDiv.textContent = 'Error processing your request';
+                        transcriptDiv.textContent = 'There was an error communicating with the server. Please try again.';
+                    }
+                };
+                
+                mediaRecorder.start();
+                startBtn.textContent = 'Stop Recording';
+                startBtn.classList.add('recording');
+                statusDiv.textContent = 'Listening...';
+                audioChunks = [];
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusDiv.textContent = 'Microphone access denied';
+            }
+        });
+    </script>
+</body>
+</html>
